@@ -13,31 +13,13 @@ import json
 import abc
 import re
 import imp
-__all__ = ['HANDLERS', 'build_codecs', 'HexBytes', 'KEYTYPECASTS', 'TYPECAST2TYPENAME']
+__all__ = ['HANDLERS', 'BaseCodecHandler', 'build_codec', 'HexBytes', 'KEYTYPECASTS', 'TYPECAST2TYPENAME']
 
 class DecodeFailedException(Exception):
     pass
 
 class EncodeFailedException(Exception):
     pass
-
-class _BaseEncoder:
-    @staticmethod
-    def encode_obj(obj):
-        raise EncodeFailedException
-
-class BaseEncoder(json.JSONEncoder):
-    def default(self, obj):
-        try:
-            return super(BaseEncoder, self).encode_obj(obj)
-        except EncodeFailedException:
-            return super(BaseEncoder, self).default(obj)
-
-
-class _BaseDecoder:
-    @staticmethod
-    def dict_to_object(_type, d):
-        raise DecodeFailedException()
 
 class KeyTypecaster(object):
     def __init__(self, *types):
@@ -60,12 +42,33 @@ class KeyTypecaster(object):
 
     @staticmethod
     def float_all():
-        regx = re.compile('^\d+\.?\d*$')
+        regx = re.compile('^(\-\d+)|(\d+\.?\d*)$')
         return regx.match, float, 'float'
 
 
 KEYTYPECASTS = KeyTypecaster.available_types()
 TYPECAST2TYPENAME = dict((tc, KeyTypecaster(tc).typecasts[0][2]) for tc in KEYTYPECASTS)
+
+
+class _BaseEncoder:
+    @staticmethod
+    def encode_obj(obj):
+        raise EncodeFailedException
+
+
+class _BaseDecoder:
+    @staticmethod
+    def dict_to_object(_type, d):
+        raise DecodeFailedException()
+
+
+class BaseEncoder(json.JSONEncoder):
+    def default(self, obj):
+        try:
+            return super(BaseEncoder, self).encode_obj(obj)
+        except EncodeFailedException:
+            return super(BaseEncoder, self).default(obj)
+
 
 class BaseDecoder(json.JSONDecoder):
     def __init__(self, *args, **kargs):
@@ -146,11 +149,39 @@ class HexBytesHandler(BaseCodecHandler):
             return HexBytes(d['bytes'].decode('hex'))
         return super(HexBytesHandler, self).dict_to_object(_type, d)
 
+
+class NumpyHandler(BaseCodecHandler):
+    def dict_to_object(self, _type, d):
+        if _type[:3] == 'np.':
+            import numpy as np
+            if _type == 'np.array':
+                tp = np.array
+
+            if _type == 'np.matrix':
+                tp = np.matrix
+
+            return tp(d.pop('array'), **d)
+
+        return super(NumpyHandler, self).dict_to_object(_type, d)
+
+    def encode_obj(self, obj):
+        import numpy as np
+        if isinstance(obj, np.ndarray):
+            return {'__type__': 'np.array', 'array': obj.tolist(), 'dtype': obj.dtype.name}
+
+        if isinstance(obj, np.matrix):
+            return {'__type__': 'np.matrix', 'array': obj.tolist(), 'dtype': obj.dtype.name}
+        return super(NumpyHandler, self).encode_obj(obj)
+
+
 _HANDLERS = {'datetime': DateTimeHandler,
-            'hex_bytes': HexBytesHandler}
+            'hex_bytes': HexBytesHandler,
+             'numpy': NumpyHandler}
+
 HANDLERS = tuple(_HANDLERS.keys())
 
-def build_codecs(name, *handlers):
+
+def build_codec(name, *handlers):
     module = imp.new_module('JsonCodecs')
     module.__dict__['BaseEncoder'] = BaseEncoder
     module.__dict__['BaseDecoder'] = BaseDecoder
