@@ -9,7 +9,7 @@ From here on I use the word 'codec' to describe a encoder/decoder pair. This may
 from jsoncodecs import build_codec, HexBytes
 from datetime import date
 
-encoder, decoder = build_codec('datetime', 'hex_bytes')
+encoder, decoder = build_codec('MyCodec', 'datetime', 'hex_bytes')
 
 today = date.today()
 hb = HexBytes(b'\x89')
