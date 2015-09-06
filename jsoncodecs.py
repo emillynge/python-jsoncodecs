@@ -196,10 +196,10 @@ class ExcelHandler(BaseCodecHandler):
         return super(ExcelHandler, self).encode_obj(obj)
 
 
-_HANDLERS = {'datetime': DateTimeHandler,
-            'hex_bytes': HexBytesHandler,
-             'numpy': NumpyHandler,
-             'excel': ExcelHandler}
+_HANDLERS = {'datetime': [DateTimeHandler],
+            'hex_bytes': [HexBytesHandler],
+             'numpy': [NumpyHandler],
+             'excel': [ExcelHandler, HexBytesHandler]}  # We need Hexbytes to serialize zipped excel files
 
 HANDLERS = tuple(_HANDLERS.keys())
 
@@ -213,17 +213,23 @@ def build_codec(name, *handlers):
 
     encoder = "class {name}Encoder(BaseEncoder,\n".format(name=name)
     decoder = "class {name}Decoder(BaseDecoder,\n".format(name=name)
+    handler_set = set()
+
     for handler in handlers:
         if isinstance(handler, basestring) and handler in _HANDLERS:
-            _handler = _HANDLERS[handler]
+            _handlers = _HANDLERS[handler]
         elif issubclass(handler, BaseCodecHandler):
-            _handler = handler
+            _handlers = [handler]
         else:
             raise Exception('Unknown handler {0}'.format(handler))
-        handler_name = _handler.__name__
-        module.__dict__[handler_name] = _handler
-        encoder += handler_name + ',\n'
-        decoder += handler_name + ',\n'
+        for _handler in _handlers:
+            if _handler in handler_set:
+                continue
+            handler_set.add(_handler)
+            handler_name = _handler.__name__
+            module.__dict__[handler_name] = _handler
+            encoder += handler_name + ',\n'
+            decoder += handler_name + ',\n'
     encoder += '_BaseEncoder):\n    pass'
     decoder += '_BaseDecoder):\n    pass'
 

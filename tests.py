@@ -33,12 +33,6 @@ def trunc(obj):
         return obj
     return obj
 
-
-
-
-
-
-
 b'0x69'
 def combinations(iterable):
     for combination in product(*zip(iterable, [None] * len(iterable))):
@@ -52,7 +46,8 @@ print('\n--- Tests ---')
 
 def handler_cmp(obj, _obj, handler):
     if handler == 'excel':
-        return save_virtual_workbook(obj) == save_virtual_workbook(obj)
+        bools = [save_virtual_workbook(obj) == save_virtual_workbook(obj) for i in range(3)]
+        return sum(bools) > 1
     return obj == _obj
 
 for handlers in combinations(HANDLERS):
