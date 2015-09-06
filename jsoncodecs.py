@@ -165,6 +165,16 @@ class NumpyHandler(BaseCodecHandler):
 
         return super(NumpyHandler, self).dict_to_object(_type, d)
 
+    def encode_obj(self, obj):
+        import numpy as np
+        if isinstance(obj, np.ndarray):
+            return {'__type__': 'np.array', 'array': obj.tolist(), 'dtype': obj.dtype.name}
+
+        if isinstance(obj, np.matrix):
+            return {'__type__': 'np.matrix', 'array': obj.tolist(), 'dtype': obj.dtype.name}
+        return super(NumpyHandler, self).encode_obj(obj)
+
+
 
 class ExcelHandler(BaseCodecHandler):
     def dict_to_object(self, _type, d):
