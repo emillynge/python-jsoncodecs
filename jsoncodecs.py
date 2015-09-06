@@ -178,7 +178,7 @@ class NumpyHandler(BaseCodecHandler):
 
 class ExcelHandler(BaseCodecHandler):
     def dict_to_object(self, _type, d):
-        if _type[:3] == 'openpyxl.':
+        if _type[:9] == 'openpyxl.':
             from openpyxl.reader.excel import load_workbook
             if _type == 'openpyxl.wb':
                 fp = BytesIO(d['data'])
