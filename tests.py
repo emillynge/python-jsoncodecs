@@ -6,11 +6,13 @@ import json
 from itertools import product, permutations
 from pprint import pformat
 import numpy as np
+from openpyxl import Workbook
 from copy import deepcopy
 hb = HexBytes(b'\x89')
 d = {'handler_tests': {'hex_bytes': hb,
                        'datetime': [datetime.now(),  date.today()],
-                       'numpy': [np.array([0], dtype=float), np.matrix([[1]])]},
+                       'numpy': [np.array([0], dtype=float), np.matrix([[1]])],
+                       'excel': Workbook()},
      'typecast_tests': {1: ('int', 'float_all'), 2.2: ('float', 'float_all'), 2.: ('float_all',), .2: ('float_all',)}}
 print('Original dict: \n{d}'.format(d=pformat(d)))
 
@@ -22,10 +24,12 @@ def combinations(iterable):
 failures = list()
 print('\n--- Tests ---')
 for handlers in combinations(HANDLERS):
-    _d = deepcopy(d)
+    _d = d
+    unused_handlers = list()
+
     for key in d['handler_tests'].keys():
         if key not in handlers:
-            _d['handler_tests'].pop(key)
+            unused_handlers.append((key, _d['handler_tests'].pop(key)))
 
     typecast2key = dict((val, key) for key, val in _d['typecast_tests'].iteritems())
     for typecasts in combinations(KEYTYPECASTS):
@@ -58,6 +62,8 @@ for handlers in combinations(HANDLERS):
                                                       'orig': _d, 'dump': dump, 'load': loaded,
                                                         ' expect': _d['handler_tests'][handler],
                                                         ' found': val}})
+    while unused_handlers:
+        _d['handler_tests'].update(dict([unused_handlers.pop()]))
 
 if failures:
     raise Exception(pformat([''] + failures))

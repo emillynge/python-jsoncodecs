@@ -12,6 +12,7 @@ from datetime import datetime, date
 import json
 import abc
 import re
+from io import BytesIO
 import imp
 __all__ = ['HANDLERS', 'BaseCodecHandler', 'build_codec', 'HexBytes', 'KEYTYPECASTS', 'TYPECAST2TYPENAME']
 
@@ -164,19 +165,31 @@ class NumpyHandler(BaseCodecHandler):
 
         return super(NumpyHandler, self).dict_to_object(_type, d)
 
-    def encode_obj(self, obj):
-        import numpy as np
-        if isinstance(obj, np.ndarray):
-            return {'__type__': 'np.array', 'array': obj.tolist(), 'dtype': obj.dtype.name}
 
-        if isinstance(obj, np.matrix):
-            return {'__type__': 'np.matrix', 'array': obj.tolist(), 'dtype': obj.dtype.name}
-        return super(NumpyHandler, self).encode_obj(obj)
+class ExcelHandler(BaseCodecHandler):
+    def dict_to_object(self, _type, d):
+        if _type[:3] == 'openpyxl.':
+            from openpyxl.reader.excel import load_workbook
+            if _type == 'openpyxl.wb':
+                fp = BytesIO(d['data'])
+                fp.seek(0)
+                wb = load_workbook(fp)
+                return wb
+        return super(ExcelHandler, self).dict_to_object(_type, d)
+
+    def encode_obj(self, obj):
+        from openpyxl.workbook import Workbook
+        if isinstance(obj, Workbook):
+            from openpyxl.writer.excel import save_virtual_workbook
+            return {'__type__': 'openpyxl.wb', 'data': HexBytes(save_virtual_workbook(obj))}
+
+        return super(ExcelHandler, self).encode_obj(obj)
 
 
 _HANDLERS = {'datetime': DateTimeHandler,
             'hex_bytes': HexBytesHandler,
-             'numpy': NumpyHandler}
+             'numpy': NumpyHandler,
+             'excel': ExcelHandler}
 
 HANDLERS = tuple(_HANDLERS.keys())
 
