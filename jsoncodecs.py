@@ -167,11 +167,12 @@ class NumpyHandler(BaseCodecHandler):
 
     def encode_obj(self, obj):
         import numpy as np
+        if isinstance(obj, np.matrix):
+            return {'__type__': 'np.matrix', 'array': obj.tolist(), 'dtype': obj.dtype.name}
+
         if isinstance(obj, np.ndarray):
             return {'__type__': 'np.array', 'array': obj.tolist(), 'dtype': obj.dtype.name}
 
-        if isinstance(obj, np.matrix):
-            return {'__type__': 'np.matrix', 'array': obj.tolist(), 'dtype': obj.dtype.name}
         return super(NumpyHandler, self).encode_obj(obj)
 
 
@@ -195,14 +196,12 @@ class ExcelHandler(BaseCodecHandler):
 
         return super(ExcelHandler, self).encode_obj(obj)
 
-
 _HANDLERS = {'datetime': [DateTimeHandler],
             'hex_bytes': [HexBytesHandler],
              'numpy': [NumpyHandler],
              'excel': [ExcelHandler, HexBytesHandler]}  # We need Hexbytes to serialize zipped excel files
 
 HANDLERS = tuple(_HANDLERS.keys())
-
 
 def build_codec(name, *handlers):
     module = imp.new_module('JsonCodecs')
