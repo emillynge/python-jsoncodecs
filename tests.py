@@ -6,20 +6,28 @@ import json
 from itertools import product, permutations
 from pprint import pformat
 import numpy as np
-from openpyxl import Workbook
-from openpyxl.writer.excel import save_virtual_workbook
-from copy import deepcopy
+import sys
 hb = HexBytes(b'\x89')
 d = {'handler_tests': {'hex_bytes': hb,
                        'datetime': [datetime.now(),  date.today()],
-                       'numpy': [np.array([0], dtype=float), np.matrix([[1]])],
-                       'excel': Workbook()},
-     'typecast_tests': {1: ('int', 'float_all'), 2.2: ('float', 'float_all'), 2.: ('float_all',), .2: ('float_all',)}}
+                       'numpy': [np.array([0], dtype=float), np.matrix([[1]])]},                                
+    'typecast_tests': {1: ('int', 'float_all'), 2.2: ('float', 'float_all'), 2.: ('float_all',), .2: ('float_all',)}}
+
+if sys.version_info.major == 2:
+    from openpyxl import Workbook
+    from openpyxl.writer.excel import save_virtual_workbook
+    d['handler_tests']['excel'] = Workbook()
+else:
+    basestring = str
+    
+from copy import deepcopy, copy
+
+     
 print('Original dict: \n{d}'.format(d=pformat(d)))
 
 def trunc(obj):
     if isinstance(obj, dict):
-        return dict((key, trunc(val)) for key, val in obj.iteritems())
+        return dict((key, trunc(val)) for key, val in obj.items())
 
     if isinstance(obj, list):
         return list(trunc(e) for e in obj)
@@ -29,7 +37,7 @@ def trunc(obj):
 
     if isinstance(obj, (basestring, bytearray)):
         if len(obj) > 70:
-            return obj[:30] + b'...' + obj[-30:]
+            return obj[:30] + '...' + obj[-30:]
         return obj
     return obj
 
@@ -53,16 +61,18 @@ def handler_cmp(obj, _obj, handler):
 for handlers in combinations(HANDLERS):
     if len(failures) > 5:
         break
-    _d = d
+    _d = copy(d)
     unused_handlers = list()
 
-    for key in d['handler_tests'].keys():
+    for key in list(d['handler_tests'].keys()):
         if key not in handlers:
             unused_handlers.append((key, _d['handler_tests'].pop(key)))
 
-    typecast2key = dict((val, key) for key, val in _d['typecast_tests'].iteritems())
+    typecast2key = dict((val, key) for key, val in _d['typecast_tests'].items())
     for typecasts in combinations(KEYTYPECASTS):
         en, de = build_codec('Test', *handlers)
+        dump = None
+        loaded = None
         try:
             _dump = json.dumps(_d, cls=en)
             loaded = json.loads(_dump, cls=de, key_typecasts=typecasts)
@@ -70,13 +80,13 @@ for handlers in combinations(HANDLERS):
         except Exception as e:
             failures.append(failures.append({'Exception': {' typecasts': typecasts,
                                                                     ' handlers': handlers,
-                                                                    'orig': _d, 'dump': trunc(dump), 'load': trunc(loaded),
-                                                                    '  error': trunc(e.message)}}))
+                                                                    'orig': _d, 'dump': trunc(None), 'load': trunc(loaded),
+                                                                    '  error': trunc(str(e))}}))
             continue
         #print("Handlers: {0}\nKey typecasts: {2}\n\torig dict: {4}\n\tjson dump: {1}\n\tload dict: {3}\n------".format(handlers,
         #                                                                                     dump,
         #                                                                                     typecasts, loaded, _d))
-        for key, _typecasts in loaded['typecast_tests'].iteritems():
+        for key, _typecasts in loaded['typecast_tests'].items():
             if key in _d['typecast_tests']:
                 ok_types = [TYPECAST2TYPENAME[_typecast] for _typecast in _typecasts]
                 if type(key).__name__ not in ok_types:
@@ -91,7 +101,7 @@ for handlers in combinations(HANDLERS):
                                                                      ' expect': typecast2key[_typecasts],
                                                                      ' found': trunc(key)}})
 
-        for handler, val in loaded['handler_tests'].iteritems():
+        for handler, val in loaded['handler_tests'].items():
             if not handler_cmp(_d['handler_tests'][handler], val, handler):
                 failures.append({'handler ' + handler: {' typecasts': typecasts,
                                                       ' handlers': handlers,

@@ -7,7 +7,7 @@ Created on Wed Sep 10 15:03:37 2014
 
 @author: emil
 """
-
+import codecs
 from datetime import datetime, date
 import json
 import abc
@@ -143,16 +143,28 @@ class DateTimeHandler(BaseCodecHandler):
 class HexBytes(bytearray):
     pass
 
-class HexBytesHandler(BaseCodecHandler):
-    def encode_obj(self, obj):
-        if isinstance(obj, HexBytes):
-            return {'__type__': 'hex_bytes', 'bytes': str(obj).encode('hex')}
-        return super(HexBytesHandler, self).encode_obj(obj)
+if sys.version_info.major == 3:
+    class HexBytesHandler(BaseCodecHandler):
+        def encode_obj(self, obj):
+            if isinstance(obj, HexBytes):
+                return {'__type__': 'hex_bytes', 'bytes': obj.hex()}
+            return super(HexBytesHandler, self).encode_obj(obj)
 
-    def dict_to_object(self, _type, d):
-        if _type == 'hex_bytes':
-            return HexBytes(d['bytes'].decode('hex'))
-        return super(HexBytesHandler, self).dict_to_object(_type, d)
+        def dict_to_object(self, _type, d):
+            if _type == 'hex_bytes':
+                return HexBytes.fromhex(d['bytes'])
+            return super(HexBytesHandler, self).dict_to_object(_type, d)
+else:
+    class HexBytesHandler(BaseCodecHandler):
+        def encode_obj(self, obj):
+            if isinstance(obj, HexBytes):
+                return {'__type__': 'hex_bytes', 'bytes': codecs.encode(obj, 'hex')}
+            return super(HexBytesHandler, self).encode_obj(obj)
+
+        def dict_to_object(self, _type, d):
+            if _type == 'hex_bytes':
+                return HexBytes(codecs.decode(d['bytes'], 'hex'))
+            return super(HexBytesHandler, self).dict_to_object(_type, d)
 
 
 class NumpyHandler(BaseCodecHandler):
@@ -180,32 +192,37 @@ class NumpyHandler(BaseCodecHandler):
         return super(NumpyHandler, self).encode_obj(obj)
 
 
+try:
+    from openpyxl.reader.excel import load_workbook
+    from openpyxl.workbook import Workbook
+    from openpyxl.writer.excel import save_virtual_workbook
 
-class ExcelHandler(BaseCodecHandler):
-    def dict_to_object(self, _type, d):
-        if _type[:9] == 'openpyxl.':
-            from openpyxl.reader.excel import load_workbook
-            if _type == 'openpyxl.wb':
-                fp = BytesIO(d['data'])
-                fp.seek(0)
-                wb = load_workbook(fp)
-                return wb
-        return super(ExcelHandler, self).dict_to_object(_type, d)
+    class ExcelHandler(BaseCodecHandler):
+        def dict_to_object(self, _type, d):
+            if _type[:9] == 'openpyxl.':
 
-    def encode_obj(self, obj):
-        from openpyxl.workbook import Workbook
-        if isinstance(obj, Workbook):
-            from openpyxl.writer.excel import save_virtual_workbook
-            return {'__type__': 'openpyxl.wb', 'data': HexBytes(save_virtual_workbook(obj))}
+                if _type == 'openpyxl.wb':
+                    fp = BytesIO(d['data'])
+                    fp.seek(0)
+                    wb = load_workbook(fp)
+                    return wb
+            return super(ExcelHandler, self).dict_to_object(_type, d)
 
-        return super(ExcelHandler, self).encode_obj(obj)
+        def encode_obj(self, obj):
+            if isinstance(obj, Workbook):
+                return {'__type__': 'openpyxl.wb', 'data': HexBytes(save_virtual_workbook(obj))}
+
+            return super(ExcelHandler, self).encode_obj(obj)
+except ImportError:
+    ExcelHandler = NotImplemented
 
 _HANDLERS = {'datetime': [DateTimeHandler],
             'hex_bytes': [HexBytesHandler],
              'numpy': [NumpyHandler],
              'excel': [ExcelHandler, HexBytesHandler]}  # We need Hexbytes to serialize zipped excel files
 
-HANDLERS = tuple(_HANDLERS.keys())
+HANDLERS = tuple(handler_name for handler_name, required_classes in _HANDLERS.items() if
+                 NotImplemented not in required_classes)
 
 def build_codec(name, *handlers):
     module = imp.new_module('JsonCodecs')
