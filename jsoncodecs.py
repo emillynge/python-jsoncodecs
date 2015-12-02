@@ -14,6 +14,10 @@ import abc
 import re
 from io import BytesIO
 import imp
+import sys
+if sys.version_info.major >= 3:
+    basestring = str
+    
 __all__ = ['HANDLERS', 'BaseCodecHandler', 'build_codec', 'HexBytes', 'KEYTYPECASTS', 'TYPECAST2TYPENAME']
 
 class DecodeFailedException(Exception):
@@ -232,7 +236,7 @@ def build_codec(name, *handlers):
     encoder += '_BaseEncoder):\n    pass'
     decoder += '_BaseDecoder):\n    pass'
 
-    exec encoder in module.__dict__
-    exec decoder in module.__dict__
+    exec(encoder, module.__dict__)
+    exec(decoder, module.__dict__)
     return getattr(module, name + 'Encoder'), getattr(module, name + 'Decoder')
 
