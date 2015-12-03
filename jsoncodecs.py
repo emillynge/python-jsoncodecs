@@ -259,7 +259,7 @@ class ComplexHandler(BaseCodecHandler):
         return super(ComplexHandler, self).dict_to_object(_type, d)
 
     def encode_obj(self, obj):
-        if isinstance(obj, complex):
+        if isinstance(obj, complex, np.complexfloating):
             return {'__type__': 'complex', 'real': obj.real, 'imag': obj.imag}
         return super(ComplexHandler, self).encode_obj(obj)
 
