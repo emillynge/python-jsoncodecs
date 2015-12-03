@@ -253,7 +253,8 @@ _HANDLERS = {'datetime': [DateTimeHandler],
             'hex_bytes': [HexBytesHandler],
              'numpy': [NumpyHandler],
              'excel': [ExcelHandler, HexBytesHandler],  # We need Hexbytes to serialize zipped excel files
-             'data_frame': [DataFrameHandler, NumpyHandler]}  # We need Hexbytes to serialize zipped excel files
+             'data_frame': [DataFrameHandler, NumpyHandler],
+             'complex': [ComplexHandler]}
 
 HANDLERS = tuple(handler_name for handler_name, required_classes in _HANDLERS.items() if
                  NotImplemented not in required_classes)
