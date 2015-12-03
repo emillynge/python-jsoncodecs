@@ -235,6 +235,19 @@ try:
 except ImportError:
     DataFrameHandler = NotImplemented
 
+
+class ComplexHandler(BaseCodecHandler):
+    def dict_to_object(self, _type, d):
+        if _type == 'complex':
+            return complex(**d)
+        return super(ComplexHandler, self).dict_to_object(_type, d)
+
+    def encode_obj(self, obj):
+        if isinstance(obj, pd.DataFrame):
+            return {'__type__': 'complex', 'real': obj.real, 'imag': obj.imag}
+        return super(DataFrameHandler, self).encode_obj(obj)
+
+
 #DataFrameHandler = NotImplemented
 _HANDLERS = {'datetime': [DateTimeHandler],
             'hex_bytes': [HexBytesHandler],

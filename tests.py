@@ -10,7 +10,8 @@ import sys
 hb = HexBytes(b'\x89')
 d = {'handler_tests': {'hex_bytes': hb,
                        'datetime': [datetime.now(),  date.today()],
-                       'numpy': [np.array([0], dtype=float), np.matrix([[1]])]},                                
+                       'numpy': [np.array([0], dtype=float), np.matrix([[1]])],
+                       'complex': [complex(1.5+1j), complex(1.5j)]},
     'typecast_tests': {1: ('int', 'float_all'), 2.2: ('float', 'float_all'), 2.: ('float_all',), .2: ('float_all',)}}
 
 if sys.version_info.major == 2:
