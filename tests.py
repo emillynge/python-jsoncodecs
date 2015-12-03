@@ -19,7 +19,13 @@ if sys.version_info.major == 2:
     d['handler_tests']['excel'] = Workbook()
 else:
     basestring = str
-    
+
+
+try:
+    import pandas as pd
+    d['handler_tests']['data_frame'] = pd.DataFrame(data=np.matrix([[1, 2], [3, 4]]), index=['id1', 3], columns=['col1', 4])
+except ImportError:
+    pass
 from copy import deepcopy, copy
 
      
@@ -53,9 +59,25 @@ failures = list()
 print('\n--- Tests ---')
 
 def handler_cmp(obj, _obj, handler):
+    if _obj is None:
+        return False
     if handler == 'excel':
         bools = [save_virtual_workbook(obj) == save_virtual_workbook(obj) for i in range(3)]
         return sum(bools) > 1
+    if handler == 'data_frame':
+        res = obj.index.values == _obj.index.values
+        if  res is False or False in res:
+            return False
+
+        res = obj.columns.values == _obj.columns.values
+        if res is False or False in res:
+            return False
+
+        res = obj.values == _obj.values
+        if res is False or False in res:
+            return False
+
+        return True
     return obj == _obj
 
 for handlers in combinations(HANDLERS):
@@ -71,7 +93,7 @@ for handlers in combinations(HANDLERS):
     typecast2key = dict((val, key) for key, val in _d['typecast_tests'].items())
     for typecasts in combinations(KEYTYPECASTS):
         en, de = build_codec('Test', *handlers)
-        dump = None
+        _dump = None
         loaded = None
         try:
             _dump = json.dumps(_d, cls=en)
@@ -80,7 +102,7 @@ for handlers in combinations(HANDLERS):
         except Exception as e:
             failures.append(failures.append({'Exception': {' typecasts': typecasts,
                                                                     ' handlers': handlers,
-                                                                    'orig': _d, 'dump': trunc(None), 'load': trunc(loaded),
+                                                                    'orig': _d, 'dump': trunc(_dump), 'load': trunc(loaded),
                                                                     '  error': trunc(str(e))}}))
             continue
         #print("Handlers: {0}\nKey typecasts: {2}\n\torig dict: {4}\n\tjson dump: {1}\n\tload dict: {3}\n------".format(handlers,
