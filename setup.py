@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='jsoncodecs',
-    version='0.2',
+    version='0.3',
     py_modules=['jsoncodecs'],
     url='',
     license='GNU GPL v3',
