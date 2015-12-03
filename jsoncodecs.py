@@ -201,7 +201,7 @@ class NumpyHandler(BaseCodecHandler):
             return {'__type__': 'np.matrix', 'array': obj.tolist(), 'dtype': obj.dtype.name}
 
         if isinstance(obj, np.ndarray):
-            if isinstance(obj.dtype, (np.complex64, np.complex128)):
+            if obj.dtype in (np.complex64, np.complex128):
                 return self._encode_complex('array', obj)
             return {'__type__': 'np.array', 'array': obj.tolist(), 'dtype': obj.dtype.name}
 
