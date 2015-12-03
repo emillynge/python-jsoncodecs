@@ -223,38 +223,14 @@ try:
     class DataFrameHandler(BaseCodecHandler):
         def dict_to_object(self, _type, d):
             if _type == 'data_frame':
-                fp = BytesIO(d['index'])
-                fp.seek(0)
-                index = np.load(fp)
-
-                fp = BytesIO(d['columns'])
-                fp.seek(0)
-                columns = np.load(fp)
-
-                fp = BytesIO(d['data'])
-                fp.seek(0)
-                data = np.load(fp)
-                return pd.DataFrame(data=data, index=index, columns=columns)
-
+                return pd.DataFrame(**d)
             return super(DataFrameHandler, self).dict_to_object(_type, d)
 
         def encode_obj(self, obj):
             if isinstance(obj, pd.DataFrame):
-                bh = HexBytesHandler()
-                fp_data = BytesIO()
-                np.save(fp_data, obj.values)
-
-
-                fp_index = BytesIO()
-                np.save(fp_index, obj.index.values)
-
-                fp_columns = BytesIO()
-                np.save(fp_columns, obj.columns.values)
-
-                return {'__type__': 'data_frame', 'data': bh.encode_obj(HexBytes(fp_data.getvalue())),
-                        'index': bh.encode_obj(HexBytes(fp_index.getvalue())),
-                        'columns': bh.encode_obj(HexBytes(fp_columns.getvalue()))}
-            
+                return {'__type__': 'data_frame', 'data': obj.values,
+                        'index': obj.index.values,
+                        'columns': obj.columns.values}
             return super(DataFrameHandler, self).encode_obj(obj)
 except ImportError:
     DataFrameHandler = NotImplemented
@@ -264,7 +240,7 @@ _HANDLERS = {'datetime': [DateTimeHandler],
             'hex_bytes': [HexBytesHandler],
              'numpy': [NumpyHandler],
              'excel': [ExcelHandler, HexBytesHandler],  # We need Hexbytes to serialize zipped excel files
-             'data_frame': [DataFrameHandler, HexBytesHandler]}  # We need Hexbytes to serialize zipped excel files
+             'data_frame': [DataFrameHandler, NumpyHandler]}  # We need Hexbytes to serialize zipped excel files
 
 HANDLERS = tuple(handler_name for handler_name, required_classes in _HANDLERS.items() if
                  NotImplemented not in required_classes)
