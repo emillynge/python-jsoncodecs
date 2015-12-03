@@ -177,16 +177,32 @@ class NumpyHandler(BaseCodecHandler):
             if _type == 'np.matrix':
                 tp = np.matrix
 
+            if _type == 'np.complex':
+                real = d['real']
+                imag = d['imag']
+                klass = np.matrix if d['array_type'] == 'matrix' else np.ndarray
+                M = klass(np.zeros(real.shape, dtype=np.complex64))
+                M[:] = [complex(r, i) for r, i in zip(real.ravel(), imag.ravel())]
+                return M
+
             return tp(d.pop('array'), **d)
 
         return super(NumpyHandler, self).dict_to_object(_type, d)
 
+    @staticmethod
+    def _encode_complex(array_type, array):
+        return {'__type__': 'np.complex', 'array_type': array_type, 'real': np.real(array), 'imag': np.imag(array)}
+
     def encode_obj(self, obj):
         import numpy as np
         if isinstance(obj, np.matrix):
+            if obj.dtype in (np.complex64, np.complex128):
+                return self._encode_complex('matrix', obj)
             return {'__type__': 'np.matrix', 'array': obj.tolist(), 'dtype': obj.dtype.name}
 
         if isinstance(obj, np.ndarray):
+            if isinstance(obj.dtype, (np.complex64, np.complex128)):
+                return self._encode_complex('array', obj)
             return {'__type__': 'np.array', 'array': obj.tolist(), 'dtype': obj.dtype.name}
 
         return super(NumpyHandler, self).encode_obj(obj)
@@ -245,7 +261,7 @@ class ComplexHandler(BaseCodecHandler):
     def encode_obj(self, obj):
         if isinstance(obj, complex):
             return {'__type__': 'complex', 'real': obj.real, 'imag': obj.imag}
-        return super(DataFrameHandler, self).encode_obj(obj)
+        return super(ComplexHandler, self).encode_obj(obj)
 
 
 #DataFrameHandler = NotImplemented
